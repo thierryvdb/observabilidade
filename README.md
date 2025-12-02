@@ -1,72 +1,72 @@
-# Observability & Automation Stack
+# Stack de Observabilidade e Automação
 
-This project implements a complete observability stack for Oracle Database using Prometheus, Grafana, and n8n for automation/AI integration.
+Este projeto implementa uma stack completa de observabilidade para Oracle Database usando Prometheus, Grafana e n8n para automação e integração com IA.
 
-## Architecture
+## Arquitetura
 
-1.  **Databases**:
+1.  **Bancos de dados**:
     - **Oracle Database (`oracle-db`)**
     - **MySQL Database (`mysql-db`)**
     - **PostgreSQL Database (`postgres-db`)**
 2.  **Exporters**:
-    - **OracleDB Exporter (`oracledb-exporter`)**: Port `9161`.
-    - **MySQL Exporter (`mysqld-exporter`)**: Port `9104`.
-    - **Postgres Exporter (`postgres-exporter`)**: Port `9187`.
-3.  **Prometheus (`prometheus`)**: Scrapes metrics from all exporters every 15 seconds.
-4.  **Grafana (`grafana`)**: Visualizes metrics. Pre-configured with Prometheus as the data source.
-5.  **n8n (`n8n`)**: Workflow automation tool to process alerts and integrate with LLMs.
+    - **OracleDB Exporter (`oracledb-exporter`)**: Porta `9161`.
+    - **MySQL Exporter (`mysqld-exporter`)**: Porta `9104`.
+    - **Postgres Exporter (`postgres-exporter`)**: Porta `9187`.
+3.  **Prometheus (`prometheus`)**: Coleta métricas de todos os exporters a cada 15 segundos.
+4.  **Grafana (`grafana`)**: Visualiza métricas. Pré-configurado com Prometheus como fonte de dados.
+5.  **n8n (`n8n`)**: Ferramenta de automação de workflows para processar alertas e integrar com LLMs.
 
-## Prerequisites
+## Pré-requisitos
 
 - Docker
 - Docker Compose
 
-## Getting Started
+## Primeiros Passos
 
-1.  **Start the Stack**:
+1.  **Suba a stack**:
     ```bash
     docker-compose up -d
     ```
 
-2.  **Access Services**:
-    - **Grafana**: [http://localhost:3000](http://localhost:3000) (User: `admin`, Pass: `admin`)
+2.  **Acesse os serviços**:
+    - **Grafana**: [http://localhost:3000](http://localhost:3000) (Usuário: `admin`, Senha: `admin`)
     - **Prometheus**: [http://localhost:9090](http://localhost:9090)
-    - **n8n**: [http://localhost:5678](http://localhost:5678) (User: `admin`, Pass: `admin`)
-    - **Oracle DB**: `localhost:1521` (System/Password: `system`/`oracle`)
-    - **MySQL DB**: `localhost:3306` (User/Pass: `appuser`/`apppassword`, Root Pass: `root`)
-    - **Postgres DB**: `localhost:5432` (User/Pass: `postgres`/`postgres`)
+    - **n8n**: [http://localhost:5678](http://localhost:5678) (Usuário: `admin`, Senha: `admin`)
+    - **Oracle DB**: `localhost:1521` (System/Senha: `system`/`oracle`)
+    - **MySQL DB**: `localhost:3306` (Usuário/Senha: `appuser`/`apppassword`, Senha do root: `root`)
+    - **Postgres DB**: `localhost:5432` (Usuário/Senha: `postgres`/`postgres`)
 
-## Configuration Details
+## Detalhes de Configuração
 
-### 1. Grafana Dashboards
-- Log in to Grafana.
-- Go to **Dashboards** > **Import**.
-- You can import a standard Oracle Dashboard (e.g., ID `3333` or `12463` from Grafana Labs) or create your own using the Prometheus datasource.
+### 1. Dashboards do Grafana
+- Faça login no Grafana.
+- Vá em **Dashboards** > **Import**.
+- Importe um dashboard padrão de Oracle (por exemplo, ID `3333` ou `12463` do Grafana Labs) ou crie o seu usando o datasource Prometheus.
 
-### 2. Setting up LLM Integration with n8n
-To achieve the goal of using AI to predict errors:
+### 2. Configurando a Integração com LLM no n8n
+Para atingir o objetivo de usar IA para prever erros:
 
-1.  **Create a Workflow in n8n**:
-    - Open n8n at [http://localhost:5678](http://localhost:5678).
-    - Create a new workflow.
-2.  **Add a Trigger**:
-    - Use a **Webhook** node (for Grafana Alerts) or a **Schedule** node (to run periodically, e.g., every hour).
-3.  **Fetch Metrics**:
-    - Use an **HTTP Request** node to query Prometheus API (`http://prometheus:9090/api/v1/query`) for key metrics.
-    - Examples:
+1.  **Crie um workflow no n8n**:
+    - Abra o n8n em [http://localhost:5678](http://localhost:5678).
+    - Crie um novo workflow.
+2.  **Adicione um gatilho**:
+    - Use um nó **Webhook** (para alertas do Grafana) ou um nó **Schedule** (para rodar periodicamente, por exemplo, a cada hora).
+3.  **Busque métricas**:
+    - Use um nó **HTTP Request** para consultar a API do Prometheus (`http://prometheus:9090/api/v1/query`) buscando métricas-chave.
+    - Exemplos:
         - Oracle: `oracle_session_count`
         - MySQL: `mysql_global_status_threads_connected`
         - Postgres: `pg_stat_activity_count`
-4.  **Analyze with LLM**:
-    - Add an **AI/LLM Chain** node (if available in your n8n version) or a generic **HTTP Request** node to call OpenAI/Anthropic API.
-    - **Prompt Example**:
-      > "Here are the current Oracle DB metrics: {json_metrics}. Analyze them for potential performance bottlenecks or space issues. Provide a summary and recommended actions."
-5.  **Action**:
-    - Use a **Slack**, **Email**, or **Discord** node to send the LLM's analysis to the operations team.
+4.  **Analise com LLM**:
+    - Adicione um nó **AI/LLM Chain** (se disponível na sua versão do n8n) ou um nó **HTTP Request** genérico para chamar a API da OpenAI/Anthropic.
+    - **Exemplo de prompt**:
+      > "Aqui estão as métricas atuais do Oracle DB: {json_metrics}. Analise-as em busca de possíveis gargalos de performance ou problemas de espaço. Forneça um resumo e ações recomendadas."
+5.  **Ação**:
+    - Use um nó **Slack**, **Email** ou **Discord** para enviar a análise do LLM para a equipe de operações.
 
-### 3. Grafana Alerting
-- Configure Grafana Alerting to send a webhook to your n8n Webhook URL when specific thresholds are breached (e.g., Tablespace > 90%).
+### 3. Alertas no Grafana
+- Configure o Grafana Alerting para enviar um webhook para a URL do seu Webhook no n8n quando limiares específicos forem atingidos (por exemplo, Tablespace > 90%).
 
-## Troubleshooting
-- **Oracle Connection**: If the exporter fails to connect, ensure the `oracle-db` container is healthy (`docker ps`).
-- **Prometheus Targets**: Check [http://localhost:9090/targets](http://localhost:9090/targets) to see if `oracle-db` is UP.
+## Solução de Problemas
+- **Conexão com Oracle**: Se o exporter não conseguir se conectar, confirme se o container `oracle-db` está saudável (`docker ps`).
+- **Targets do Prometheus**: Acesse [http://localhost:9090/targets](http://localhost:9090/targets) para verificar se `oracle-db` está UP.

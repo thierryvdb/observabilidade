@@ -1,0 +1,163 @@
+version: '3.8'
+
+services:
+  # Banco de Dados Oracle (alvo)
+  oracle-db:
+    image: gvenzl/oracle-xe:latest
+    container_name: oracle-db
+    ports:
+      - "1521:1521"
+    environment:
+      - ORACLE_PASSWORD=oracle
+      - APP_USER=appuser
+      - APP_USER_PASSWORD=apppassword
+    volumes:
+      - oracle-data:/opt/oracle/oradata
+    networks:
+      - monitoring-net
+    healthcheck:
+      test: [ "CMD", "sqlplus", "-L", "system/oracle@//localhost:1521/XE", "select", "1", "from", "dual" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # OracleDB Exporter (coletor de métricas)
+  oracledb-exporter:
+    image: iamseth/oracledb_exporter:latest
+    container_name: oracledb-exporter
+    ports:
+      - "9161:9161"
+    environment:
+      - DATA_SOURCE_NAME=system/oracle@//oracle-db:1521/XE
+    depends_on:
+      oracle-db:
+        condition: service_healthy
+    networks:
+      - monitoring-net
+
+  # Banco de Dados MySQL
+  mysql-db:
+    image: mysql:8.0
+    container_name: mysql-db
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_DATABASE=appdb
+      - MYSQL_USER=appuser
+      - MYSQL_PASSWORD=apppassword
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks:
+      - monitoring-net
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Exporter do MySQL
+  mysqld-exporter:
+    image: prom/mysqld-exporter:latest
+    container_name: mysqld-exporter
+    ports:
+      - "9104:9104"
+    environment:
+      - DATA_SOURCE_NAME=appuser:apppassword@(mysql-db:3306)/
+    depends_on:
+      mysql-db:
+        condition: service_healthy
+    networks:
+      - monitoring-net
+
+  # Banco de Dados PostgreSQL
+  postgres-db:
+    image: postgres:15
+    container_name: postgres-db
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=appdb
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - monitoring-net
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Exporter do PostgreSQL
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:latest
+    container_name: postgres-exporter
+    ports:
+      - "9187:9187"
+    environment:
+      - DATA_SOURCE_NAME=postgresql://postgres:postgres@postgres-db:5432/postgres?sslmode=disable
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+    networks:
+      - monitoring-net
+
+  # Prometheus (armazenamento de métricas)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+    networks:
+      - monitoring-net
+
+  # Grafana (visualização)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    depends_on:
+      - prometheus
+    networks:
+      - monitoring-net
+
+  # n8n (automação e orquestração de LLM)
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: n8n
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=admin
+      - N8N_BASIC_AUTH_PASSWORD=admin
+      - WEBHOOK_URL=http://localhost:5678/
+    volumes:
+      - n8n-data:/home/node/.n8n
+    networks:
+      - monitoring-net
+
+networks:
+  monitoring-net:
+    driver: bridge
+
+volumes:
+  oracle-data:
+  mysql-data:
+  postgres-data:
+  prometheus-data:
+  grafana-data:
+  n8n-data:
